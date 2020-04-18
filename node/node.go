@@ -101,7 +101,7 @@ func NewNode(cfg Config) (*Node, error) {
 		)),
 		libp2p.NATPortMap(),
 		libp2p.Routing(func(h host.Host) (routing.PeerRouting, error) {
-			n.kdht, err = dht.New(ctx, h)
+			n.kdht, err = dht.New(ctx, h, dht.Mode(dht.ModeAuto))
 			return n.kdht, err
 		}),
 		libp2p.EnableAutoRelay(),
