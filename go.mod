@@ -1,8 +1,9 @@
-module infinitychat
+module github.com/foxcpp/infinitychat
 
 go 1.14
 
 require (
+	github.com/BurntSushi/toml v0.3.1
 	github.com/gdamore/tcell v1.3.0
 	github.com/ipfs/go-log v1.0.3
 	github.com/libp2p/go-libp2p v0.8.0
@@ -18,5 +19,5 @@ require (
 	github.com/multiformats/go-multiaddr v0.2.1
 	github.com/rivo/tview v0.0.0-20200414130344-8e06c826b3a5
 	golang.org/x/crypto v0.0.0-20200414173820-0848c9571904
-	golang.org/x/sys v0.0.0-20200413165638-669c56c373c4 // indirect
+	golang.org/x/sys v0.0.0-20200413165638-669c56c373c4
 )

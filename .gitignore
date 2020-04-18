@@ -1,4 +1,4 @@
-infinitychat.*
-infinitychat
+cmd/infchat/infchat
 *.toml
+!*.example.toml
 *.key

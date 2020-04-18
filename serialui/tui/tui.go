@@ -1,4 +1,4 @@
-package main
+package tui
 
 import (
 	"fmt"
@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
+	infchat "github.com/foxcpp/infinitychat/node"
 	"github.com/gdamore/tcell"
-	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/rivo/tview"
 )
 
@@ -26,9 +26,11 @@ type TUI struct {
 	inputHistoryIndex int
 
 	lines chan string
+
+	currentTopic string
 }
 
-func NewTUI() *TUI {
+func New() *TUI {
 	tui := &TUI{
 		app:    tview.NewApplication(),
 		header: tview.NewTextView(),
@@ -107,12 +109,11 @@ func NewTUI() *TUI {
 
 	tui.app.SetRoot(tui.flex, true)
 
-	go tui.statusUpdate()
-
 	return tui
 }
 
-func (tui *TUI) Run() {
+func (tui *TUI) Run(node *infchat.Node) {
+	go tui.statusUpdate(node)
 	tui.app.Run()
 }
 
@@ -121,26 +122,15 @@ func (tui *TUI) Close() error {
 	return nil
 }
 
-func (tui *TUI) statusUpdate() {
+func (tui *TUI) statusUpdate(node *infchat.Node) {
 	t := time.NewTicker(1 * time.Second)
 	const statusLineFmt = "InfinityChat v0.1 | State: %s  %d connected peers (%d known), %d pubsub subscriptions"
 
 	for range t.C {
-		peersConn := len(node.Network().Peers())
-		peersKnown := len(node.Peerstore().Peers())
-		psSubs := len(pubsubInst.GetTopics())
-		state := "???"
+		s := node.Status()
 
-		if peersConn == 0 {
-			state = "Alone."
-		} else if peersConn < lowConnsMark {
-			state = "Active."
-		} else {
-			state = "Ready."
-		}
-
-		statusLine := fmt.Sprintf(statusLineFmt, state, peersConn, peersKnown, psSubs)
-		if s := autonatSys.Status(); s == network.ReachabilityPrivate {
+		statusLine := fmt.Sprintf(statusLineFmt, s.State, s.ConnectedPeers, s.KnownPeers, s.PubsubTopics)
+		if s.NAT {
 			statusLine += ", NAT detected"
 		}
 
@@ -150,18 +140,23 @@ func (tui *TUI) statusUpdate() {
 	}
 }
 
-func (tui *TUI) Msg(prefix string, remote bool, format string, args ...interface{}) {
-	tui.msg(prefix, remote, true, format, args...)
+func (tui *TUI) Write(b []byte) (int, error) {
+	tui.Msg("local", true, "%v", string(b))
+	return 0, nil
 }
 
-func (tui *TUI) ColorMsg(prefix string, remote bool, format string, args ...interface{}) {
-	tui.msg(prefix, remote, false, format, args...)
+func (tui *TUI) Msg(prefix string, local bool, format string, args ...interface{}) {
+	tui.msg(prefix, local, true, format, args...)
 }
 
-func (tui *TUI) Error(prefix string, remote bool, format string, args ...interface{}) {
+func (tui *TUI) ColorMsg(prefix string, local bool, format string, args ...interface{}) {
+	tui.msg(prefix, local, false, format, args...)
+}
+
+func (tui *TUI) Error(prefix string, local bool, format string, args ...interface{}) {
 	value := fmt.Sprintf(format, args...)
 
-	tui.msg(prefix, remote, false, "[#870000]%s[-]", tview.Escape(value))
+	tui.msg(prefix, local, false, "[#870000]%s[-]", tview.Escape(value))
 }
 
 func pickColor(prefix string) string {
@@ -190,6 +185,8 @@ func pickColor(prefix string) string {
 
 func (tui *TUI) msg(prefix string, local, escape bool, format string, args ...interface{}) {
 	msg := fmt.Sprintf(format, args...)
+	msg = strings.TrimRight(msg, "\n\t ")
+
 	lines := strings.Split(msg, "\n")
 	stamp := time.Now().Format("[#dadada]15[#8a8a8a]:[#dadada]04[#8a8a8a]:[#dadada]05[-]")
 
@@ -216,15 +213,19 @@ func (tui *TUI) msg(prefix string, local, escape bool, format string, args ...in
 		tui.logBox.ScrollToEnd()
 	}
 
-	tui.input.SetLabel(descriptorForDisplay(currentTopic) + " > ")
+	tui.input.SetLabel(infchat.DescriptorForDisplay(tui.currentTopic) + " > ")
 	tui.app.Draw()
 }
 
 func (tui *TUI) ReadLine() (string, error) {
-	tui.input.SetLabel(descriptorForDisplay(currentTopic) + " > ")
+	tui.input.SetLabel(infchat.DescriptorForDisplay(tui.currentTopic) + " > ")
 	return <-tui.lines, nil
 }
 
-var (
-	Out *TUI
-)
+func (tui *TUI) SetCurrentChat(desc string) {
+	tui.currentTopic = desc
+}
+
+func (tui *TUI) CurrentChat() string {
+	return tui.currentTopic
+}
