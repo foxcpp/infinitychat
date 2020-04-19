@@ -11,6 +11,7 @@ type Config struct {
 
 	Swarm struct {
 		Bootstrap []string `toml:"bootstrap"`
+		PSK       string   `toml:"psk"`
 
 		ListenAddrs []string `toml:"listen_addrs"`
 

@@ -15,6 +15,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/pnet"
 	"github.com/libp2p/go-libp2p-core/routing"
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
@@ -29,16 +30,18 @@ const lowConnsMark = 50
 const highConnsMark = 100
 
 type Config struct {
-	Identity    ed25519.PrivateKey
+	Identity ed25519.PrivateKey
+
 	Bootstrap   []string
 	ListenAddrs []string
+	PSK         string
 
 	ConnsHigh int
 	ConnsLow  int
 
-	Log *log.Logger
-
 	RejoinInterval time.Duration
+
+	Log *log.Logger
 }
 
 type Node struct {
@@ -86,8 +89,7 @@ func NewNode(cfg Config) (*Node, error) {
 	// Cannot fail since it is just copying struct internally.
 	privKey, _ := crypto.UnmarshalEd25519PrivateKey(cfg.Identity)
 
-	n.Host, err = libp2p.New(
-		ctx,
+	opts := []libp2p.Option{
 		libp2p.Identity(privKey),
 		libp2p.ListenAddrStrings(cfg.ListenAddrs...),
 		libp2p.Security(noise.ID, noise.New),
@@ -107,6 +109,15 @@ func NewNode(cfg Config) (*Node, error) {
 		libp2p.EnableAutoRelay(),
 		libp2p.Ping(false), // We will configure it on our own.
 		libp2p.UserAgent("infinitychat/v0.1"),
+	}
+
+	if cfg.PSK != "" {
+		opts = append(opts, libp2p.PrivateNetwork(pnet.PSK(cfg.PSK)))
+	}
+
+	n.Host, err = libp2p.New(
+		ctx,
+		opts...,
 	)
 	if err != nil {
 		return nil, h.Fail(err)

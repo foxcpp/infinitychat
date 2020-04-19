@@ -97,6 +97,7 @@ func main() {
 		ListenAddrs:    cfg.Swarm.ListenAddrs,
 		ConnsHigh:      cfg.Swarm.HighWaterMark,
 		ConnsLow:       cfg.Swarm.LowWaterMark,
+		PSK:            cfg.Swarm.PSK,
 		RejoinInterval: time.Duration(cfg.Channels.RejoinIntervalSecs) * time.Second,
 		Log:            log.New(ui, "", 0),
 	})
