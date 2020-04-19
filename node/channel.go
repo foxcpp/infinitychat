@@ -158,7 +158,6 @@ func (n *Node) rejoin(ctx context.Context, traceLog bool, desc string) error {
 		ctx, cancel := context.WithTimeout(n.nodeContext, time.Minute)
 		defer cancel()
 
-		counter := 0
 		for peer := range pis {
 			if string(peer.ID) == string(n.Host.ID()) {
 				continue
@@ -167,17 +166,21 @@ func (n *Node) rejoin(ctx context.Context, traceLog bool, desc string) error {
 				if traceLog {
 					n.Cfg.Log.Printf("Connected to %v for %s", peer, desc)
 				}
-				counter++
 			} else if traceLog {
 				n.Cfg.Log.Printf("Connect to %v for %s failed: %v", peer, desc, err)
 			}
 		}
 
+		// Give pubsub some time to figure out connections.
+		time.Sleep(time.Second)
+
+		n.pubsubLock.Lock()
 		nowCount := len(n.PubsubProto.ListPeers(desc))
 		if lc, ok := n.knownChannelMembers[desc]; traceLog || !ok || nowCount != lc {
-			n.Cfg.Log.Printf("Connected to %d peers for %s", counter, desc)
+			n.Cfg.Log.Printf("Connected to %d peers for %s", nowCount, desc)
 			n.knownChannelMembers[desc] = nowCount
 		}
+		n.pubsubLock.Unlock()
 	}()
 
 	return nil
