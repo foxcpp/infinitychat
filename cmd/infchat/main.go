@@ -67,6 +67,7 @@ type RunnableUI interface {
 func main() {
 	cfgFile := flag.String("config", "", "Configuration file to use")
 	serialUI := flag.String("serialui", "tview", "Serial UI implementation to use")
+	p2pLog := flag.String("libp2p-log", "warn", "libp2p logger level")
 	flag.Parse()
 
 	cfg, err := ReadConfig(*cfgFile)
@@ -82,7 +83,12 @@ func main() {
 	}
 
 	if canLog() {
-		golog.SetAllLoggers(golog.LevelInfo)
+		level, err := golog.LevelFromString(*p2pLog)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			return
+		}
+		golog.SetAllLoggers(level)
 	}
 
 	key, err := loadKey(ui, cfg.PrivateKeyPath)

@@ -136,6 +136,8 @@ func NewNode(cfg Config) (*Node, error) {
 			return nil, h.Fail(err)
 		}
 		h.CleanupClose(n.MDNSService)
+
+		n.MDNSService.RegisterNotifee(n)
 	}
 
 	n.AutonatProto, err = autonat.New(ctx, n.Host)
@@ -244,4 +246,8 @@ type Message struct {
 
 func (n *Node) Messages() <-chan Message {
 	return n.messages
+}
+
+func (n *Node) HandlePeerFound(pi peer.AddrInfo) {
+	n.Host.Connect(n.nodeContext, pi)
 }
