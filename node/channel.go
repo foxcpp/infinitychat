@@ -103,6 +103,10 @@ func (n *Node) Post(descriptor, msg string) error {
 			return errors.New("not on the channel")
 		}
 
+		if len(topic.ListPeers()) == 0 {
+			return errors.New("wait a bit while client learns about channel members (if there any)")
+		}
+
 		if err := topic.Publish(context.Background(), []byte(msg)); err != nil {
 			return fmt.Errorf("publish failed: %w", err)
 		}
@@ -164,7 +168,7 @@ func (n *Node) rejoin(ctx context.Context, traceLog bool, desc string) error {
 			}
 			if err := n.Host.Connect(ctx, peer); err == nil {
 				if traceLog {
-					n.Cfg.Log.Printf("Connected to %v for %s", peer, desc)
+					n.Cfg.Log.Printf("Connected to %v for %s", peer.ID, desc)
 				}
 			} else if traceLog {
 				n.Cfg.Log.Printf("Connect to %v for %s failed: %v", peer, desc, err)
