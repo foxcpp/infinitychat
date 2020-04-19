@@ -26,7 +26,10 @@ func InputLoop(ui UI, node *infchat.Node) {
 				ui.Msg("local", true, "You shout in the empty field with noone to hear you... use /join <channel>")
 				continue
 			}
-			node.Post(ui.CurrentChat(), t)
+			if err := node.Post(ui.CurrentChat(), t); err != nil {
+				ui.Error("local", true, "Post failed: %v", err)
+				continue
+			}
 
 			ui.Msg(node.ID().String(), true, t)
 			continue

@@ -110,6 +110,7 @@ func main() {
 	})
 	if err != nil {
 		ui.Error("local", false, "%v", err)
+		return
 	}
 
 	go serialui.InputLoop(ui, node)

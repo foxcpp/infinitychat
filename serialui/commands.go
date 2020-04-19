@@ -138,10 +138,12 @@ func joinCmd(ui UI, node *infchat.Node, commandParts []string) {
 	descriptor, err := infchat.ExpandDescriptor(commandParts[1])
 	if err != nil {
 		ui.Error("local", true, "Invalid channel descriptor")
+		return
 	}
 
 	if err := node.JoinChannel(descriptor); err != nil {
 		ui.Error("local", true, "Join failed: %v", err)
+		return
 	}
 
 	ui.Msg("local", true, "Joined %s", commandParts[1])
@@ -156,10 +158,12 @@ func leaveCmd(ui UI, node *infchat.Node, commandParts []string) {
 	descriptor, err := infchat.ExpandDescriptor(commandParts[1])
 	if err != nil {
 		ui.Error("local", true, "Invalid channel descriptor")
+		return
 	}
 
 	if err := node.LeaveChannel(descriptor); err != nil {
 		ui.Error("local", true, "Leave failed: %v", err)
+		return
 	}
 
 	if ui.CurrentChat() == descriptor {
@@ -177,6 +181,7 @@ func connectCmd(ui UI, node *infchat.Node, commandParts []string) {
 
 	if err := node.ConnectStr(commandParts[1]); err != nil {
 		ui.Error("local", true, "Connect failed: %v", err)
+		return
 	}
 	ui.Msg("local", true, "Connected to %s", commandParts)
 }
@@ -190,11 +195,13 @@ func msgCmd(ui UI, node *infchat.Node, commandParts []string) {
 	descriptor, err := infchat.ExpandDescriptor(commandParts[1])
 	if err != nil {
 		ui.Error("local", true, "Invalid channel descriptor")
+		return
 	}
 	msg := strings.Join(commandParts[1:], " ")
 
 	if err := node.Post(descriptor, msg); err != nil {
 		ui.Error("local", true, "Post failed: %v", err)
+		return
 	}
 
 	if ui.CurrentChat() == descriptor {
@@ -346,6 +353,7 @@ func pingCmd(ui UI, node *infchat.Node, commandParts []string) {
 	pid, err := peer.Decode(commandParts[1])
 	if err != nil {
 		ui.Error("local", true, "Malformed ID: %v", err)
+		return
 	}
 
 	for i := 0; i < 3; i++ {
