@@ -258,4 +258,5 @@ func (n *Node) Messages() <-chan Message {
 
 func (n *Node) HandlePeerFound(pi peer.AddrInfo) {
 	n.Host.Connect(n.nodeContext, pi)
+	go n.kdht.RefreshRoutingTable()
 }
