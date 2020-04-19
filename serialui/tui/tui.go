@@ -156,7 +156,7 @@ func (tui *TUI) ColorMsg(prefix string, local bool, format string, args ...inter
 func (tui *TUI) Error(prefix string, local bool, format string, args ...interface{}) {
 	value := fmt.Sprintf(format, args...)
 
-	tui.msg(prefix, local, false, "[#870000]%s[-]", tview.Escape(value))
+	tui.msg(prefix, local, false, "[#fe3333:-:b]%s[-:-:-]", tview.Escape(value))
 }
 
 func pickColor(prefix string) string {
