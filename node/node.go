@@ -22,6 +22,7 @@ import (
 	noise "github.com/libp2p/go-libp2p-noise"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	libp2pquic "github.com/libp2p/go-libp2p-quic-transport"
+	libp2pdiscovery "github.com/libp2p/go-libp2p/p2p/discovery"
 	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 	"github.com/multiformats/go-multiaddr"
 )
@@ -35,6 +36,8 @@ type Config struct {
 	Bootstrap   []string
 	ListenAddrs []string
 	PSK         string
+
+	MDNSInterval time.Duration
 
 	ConnsHigh int
 	ConnsLow  int
@@ -54,6 +57,7 @@ type Node struct {
 	PubsubProto  *pubsub.PubSub
 	PingProto    *ping.PingService
 	AutonatProto autonat.AutoNAT
+	MDNSService  libp2pdiscovery.Service
 
 	// This is not perfectly fine use of context but here it is kept internally
 	// and used to cancel literally everything on node shutdown.
@@ -126,6 +130,14 @@ func NewNode(cfg Config) (*Node, error) {
 
 	n.Discover = discovery.NewRoutingDiscovery(n.kdht)
 
+	if cfg.MDNSInterval != 0 {
+		n.MDNSService, err = libp2pdiscovery.NewMdnsService(n.nodeContext, n.Host, cfg.MDNSInterval, libp2pdiscovery.ServiceTag)
+		if err != nil {
+			return nil, h.Fail(err)
+		}
+		h.CleanupClose(n.MDNSService)
+	}
+
 	n.AutonatProto, err = autonat.New(ctx, n.Host)
 	if err != nil {
 		return nil, h.Fail(err)
@@ -179,6 +191,7 @@ func (n *Node) Close() error {
 	n.ctxCancel()
 
 	n.kdht.Close()
+	n.MDNSService.Close()
 
 	return n.Host.Close()
 }

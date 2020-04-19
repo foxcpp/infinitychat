@@ -17,7 +17,12 @@ type Config struct {
 
 		HighWaterMark int `toml:"conns_high_watermark"`
 		LowWaterMark  int `toml:"conns_low_watermark"`
-	} `toml:"p2p"`
+	} `toml:"swarm"`
+
+	Discovery struct {
+		MDNS             bool `toml:"mdns"`
+		MDNSIntervalSecs int  `toml:"mdns_interval_secs"`
+	} `toml:"discovery"`
 
 	Channels struct {
 		RejoinIntervalSecs int `toml:"rejoin_interval_secs"`
@@ -47,6 +52,8 @@ func CreateDefaults() *Config {
 	}
 	cfg.Swarm.HighWaterMark = 200
 	cfg.Swarm.LowWaterMark = 100
+	cfg.Discovery.MDNS = true
+	cfg.Discovery.MDNSIntervalSecs = 10
 	cfg.Channels.RejoinIntervalSecs = 15
 
 	return cfg

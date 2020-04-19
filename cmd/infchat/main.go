@@ -98,6 +98,7 @@ func main() {
 		ConnsHigh:      cfg.Swarm.HighWaterMark,
 		ConnsLow:       cfg.Swarm.LowWaterMark,
 		PSK:            cfg.Swarm.PSK,
+		MDNSInterval:   time.Duration(cfg.Discovery.MDNSIntervalSecs) * time.Second,
 		RejoinInterval: time.Duration(cfg.Channels.RejoinIntervalSecs) * time.Second,
 		Log:            log.New(ui, "", 0),
 	})
