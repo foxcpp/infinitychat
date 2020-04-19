@@ -3,6 +3,7 @@ package infchat
 import (
 	"context"
 	"crypto/ed25519"
+	"crypto/sha256"
 	"fmt"
 	"log"
 	"sync"
@@ -98,7 +99,6 @@ func NewNode(cfg Config) (*Node, error) {
 		libp2p.ListenAddrStrings(cfg.ListenAddrs...),
 		libp2p.Security(noise.ID, noise.New),
 		libp2p.DefaultSecurity,
-		libp2p.Transport(libp2pquic.NewTransport),
 		libp2p.DefaultTransports,
 		libp2p.ConnectionManager(connmgr.NewConnManager(
 			lowConnsMark,
@@ -116,7 +116,11 @@ func NewNode(cfg Config) (*Node, error) {
 	}
 
 	if cfg.PSK != "" {
-		opts = append(opts, libp2p.PrivateNetwork(pnet.PSK(cfg.PSK)))
+		digest := sha256.Sum256([]byte(cfg.PSK))
+		opts = append(opts, libp2p.PrivateNetwork(pnet.PSK(digest[:])))
+	} else {
+		// No support for private networks in QUIC transport (?)
+		opts = append(opts, libp2p.Transport(libp2pquic.NewTransport))
 	}
 
 	n.Host, err = libp2p.New(
