@@ -187,8 +187,12 @@ func (n *Node) Run() {
 		}
 	}
 
-	n.Cfg.Log.Printf("Entangling fabric of infinity... %d bootstrap peers", counter)
-	n.kdht.Bootstrap(n.nodeContext)
+	if len(n.Cfg.Bootstrap) != 0 {
+		n.Cfg.Log.Printf("Entangling fabric of infinity... %d bootstrap peers", counter)
+		n.kdht.Bootstrap(n.nodeContext)
+	} else {
+		n.Cfg.Log.Printf("Entangling fabric of infinity... No bootstrap peers, only mDNS")
+	}
 }
 
 func (n *Node) Close() error {
