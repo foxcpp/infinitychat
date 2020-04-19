@@ -196,6 +196,12 @@ func msgCmd(ui UI, node *infchat.Node, commandParts []string) {
 	if err := node.Post(descriptor, msg); err != nil {
 		ui.Error("local", true, "Post failed: %v", err)
 	}
+
+	if ui.CurrentChat() == descriptor {
+		ui.Msg(node.ID().String(), true, msg)
+	} else {
+		ui.Msg(infchat.DescriptorForDisplay(descriptor)+":"+node.ID().String(), true, msg)
+	}
 }
 
 func rejoinCmd(ui UI, node *infchat.Node, commandParts []string) {

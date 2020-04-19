@@ -27,6 +27,8 @@ func InputLoop(ui UI, node *infchat.Node) {
 				continue
 			}
 			node.Post(ui.CurrentChat(), t)
+
+			ui.Msg(node.ID().String(), true, t)
 			continue
 		}
 
