@@ -49,6 +49,7 @@ func CreateDefaults() *Config {
 		"/ip6/::/tcp/18755",
 		"/ip4/0.0.0.0/udp/18755/quic",
 		"/ip6/::/udp/18755/quic",
+		"/p2p-circuit",
 	}
 	cfg.Swarm.HighWaterMark = 200
 	cfg.Swarm.LowWaterMark = 100
