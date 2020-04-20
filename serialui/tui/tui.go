@@ -40,7 +40,7 @@ func New() *TUI {
 		flex:   tview.NewFlex(),
 		logBox: tview.NewTextView(),
 		input:  tview.NewInputField(),
-		lines:  make(chan string),
+		lines:  make(chan string, 100),
 	}
 
 	tui.header.SetBackgroundColor(tcell.Color236)
