@@ -55,7 +55,7 @@ func CreateDefaults() *Config {
 	cfg.Swarm.LowWaterMark = 100
 	cfg.Discovery.MDNS = true
 	cfg.Discovery.MDNSIntervalSecs = 10
-	cfg.Channels.RejoinIntervalSecs = 5
+	cfg.Channels.RejoinIntervalSecs = 15
 
 	return cfg
 }
