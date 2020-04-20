@@ -209,7 +209,7 @@ func (tui *TUI) msg(prefix string, local, escape bool, format string, args ...in
 	color := pickColor(prefix)
 
 	for _, line := range lines {
-		if tui.running {
+		if !tui.running {
 			fmt.Fprintf(os.Stderr, "%v [%s] %s", time.Now().Format("15:04:05"), prefix, line)
 		}
 		fmt.Fprintf(tui.logBox, "%v [%s][::b]%s[#eeeeee::-] %s[-]\n", stamp, color, prefixBraces, line)
