@@ -218,25 +218,25 @@ func (n *Node) Ping(pid peer.ID) time.Duration {
 	return res.RTT
 }
 
-func (n *Node) Connect(addr multiaddr.Multiaddr) error {
+func (n *Node) Connect(addr multiaddr.Multiaddr) (peer.ID, error) {
 	pi, err := peer.AddrInfoFromP2pAddr(addr)
 	if err != nil {
-		return fmt.Errorf("connect: %w", err)
+		return "", fmt.Errorf("connect: %w", err)
 	}
 
 	ctx, cancel := context.WithTimeout(n.nodeContext, 15*time.Second)
 	defer cancel()
 
 	if err := n.Host.Connect(ctx, *pi); err != nil {
-		return fmt.Errorf("connect: %w", err)
+		return "", fmt.Errorf("connect: %w", err)
 	}
-	return nil
+	return pi.ID, nil
 }
 
-func (n *Node) ConnectStr(multiaddrStr string) error {
+func (n *Node) ConnectStr(multiaddrStr string) (peer.ID, error) {
 	ma, err := multiaddr.NewMultiaddr(multiaddrStr)
 	if err != nil {
-		return fmt.Errorf("connect: %w", err)
+		return "", fmt.Errorf("connect: %w", err)
 	}
 
 	return n.Connect(ma)

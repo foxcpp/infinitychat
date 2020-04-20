@@ -179,11 +179,12 @@ func connectCmd(ui UI, node *infchat.Node, commandParts []string) {
 		return
 	}
 
-	if err := node.ConnectStr(commandParts[1]); err != nil {
+	pid, err := node.ConnectStr(commandParts[1])
+	if err != nil {
 		ui.Error("local", true, "Connect failed: %v", err)
 		return
 	}
-	ui.Msg("local", true, "Connected to %s", commandParts)
+	ui.Msg("local", true, "Connected to %s", pid)
 }
 
 func msgCmd(ui UI, node *infchat.Node, commandParts []string) {

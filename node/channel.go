@@ -171,7 +171,7 @@ func (n *Node) rejoin(ctx context.Context, traceLog bool, desc string) error {
 					n.Cfg.Log.Printf("Connected to %v for %s", peer.ID, desc)
 				}
 			} else if traceLog {
-				n.Cfg.Log.Printf("Connect to %v for %s failed: %v", peer, desc, err)
+				n.Cfg.Log.Printf("Connect to %v for %s failed: %v", peer.ID, desc, err)
 			}
 		}
 
