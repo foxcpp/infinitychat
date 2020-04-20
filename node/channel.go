@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/libp2p/go-libp2p-core/discovery"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 )
 
@@ -38,7 +39,8 @@ func (n *Node) JoinChannel(descr string) error {
 	n.subs[descr] = subscription
 
 	go n.pullMessages(subscription)
-	go n.rejoin(n.nodeContext, true, descr)
+	go n.AnnounceChannel(descr)
+	go n.RejoinChannel(descr)
 	return nil
 }
 
@@ -78,6 +80,12 @@ func (n *Node) LeaveChannel(descr string) error {
 		return fmt.Errorf("not on the channel")
 	}
 
+	// We are no longer interested in the connection to this peer
+	// ... unless it is a member of another channel we are part of.
+	for _, p := range topic.ListPeers() {
+		n.Host.ConnManager().Unprotect(p, descr)
+	}
+
 	sub, ok := n.subs[descr]
 	if !ok {
 		return fmt.Errorf("not on the channel")
@@ -103,13 +111,17 @@ func (n *Node) Post(descriptor, msg string) error {
 			return errors.New("not on the channel")
 		}
 
-		if len(topic.ListPeers()) == 0 {
-			return errors.New("wait a bit while client learns about channel members (if there any)")
-		}
+		go func() {
+			if len(topic.ListPeers()) == 0 {
+				n.Cfg.Log.Printf("No connected peers for channel, message will be queued and may be dropped")
+			}
 
-		if err := topic.Publish(context.Background(), []byte(msg)); err != nil {
-			return fmt.Errorf("publish failed: %w", err)
-		}
+			if err := topic.Publish(n.nodeContext, []byte(msg),
+				pubsub.WithReadiness(pubsub.MinTopicSize(1)),
+			); err != nil {
+				n.Cfg.Log.Printf("Publish failed: %v", err)
+			}
+		}()
 	case strings.HasPrefix(descriptor, DMPrefix):
 		return errors.New("not implemented yet")
 	default:
@@ -119,21 +131,56 @@ func (n *Node) Post(descriptor, msg string) error {
 	return nil
 }
 
-// Rejoin forces immediate reannounce of channel membership.
-//
-// It also actively looks for other members and attempts to establish a direct connection.
-func (n *Node) Rejoin(desc string) error {
-	return n.rejoin(n.nodeContext, true, desc)
+func (n *Node) AnnounceChannel(desc string) error {
+	_, err := n.Discover.Advertise(n.nodeContext, desc,
+		discovery.TTL(10*time.Minute))
+	return err
 }
 
-// RejoinAll froces immediate reannounce of membership for all channels.
-//
-// See Rejoin.
+func (n *Node) RejoinChannel(desc string) error {
+	pis, err := n.Discover.FindPeers(n.nodeContext, desc, discovery.Limit(100))
+	if err != nil {
+		return fmt.Errorf("join: find peers %s: %w", desc, err)
+	}
+
+	// The whole thing should not take more than a minute.
+	ctx, cancel := context.WithTimeout(n.nodeContext, time.Minute)
+	defer cancel()
+
+	protectedCount := 0
+
+	for peer := range pis {
+		if string(peer.ID) == string(n.Host.ID()) {
+			continue
+		}
+		if err := n.Host.Connect(ctx, peer); err != nil {
+			// Not much we can do...
+			continue
+		}
+
+		// We do not want 100 protected connections for each channel.
+		// Even one connection should be enough to keep us part of the mesh
+		// but play it safe and keep 10 connections.
+		if protectedCount >= 10 {
+			continue
+		}
+
+		// Prevent connection manager from closing the connection we need.
+		// Using channel descriptor as protection tag as we can have protected
+		// connection as long as the peer is a member of any channels.
+		n.Host.ConnManager().Protect(peer.ID, desc)
+		protectedCount++
+	}
+
+	// Having zero means we got no connections at all.
+	if protectedCount == 0 {
+		return errors.New("join: failed to connect to any peers for the channel")
+	}
+
+	return nil
+}
+
 func (n *Node) RejoinAll() error {
-	return n.rejoinAll(true)
-}
-
-func (n *Node) rejoinAll(traceLog bool) error {
 	// Avoid holding the lock for too long.
 	n.pubsubLock.Lock()
 	topicList := make([]string, 0, len(n.topics))
@@ -143,49 +190,24 @@ func (n *Node) rejoinAll(traceLog bool) error {
 	n.pubsubLock.Unlock()
 
 	for _, topic := range topicList {
-		n.rejoin(n.nodeContext, traceLog, topic)
+		n.RejoinChannel(topic)
 	}
 
 	return nil
 }
 
-func (n *Node) rejoin(ctx context.Context, traceLog bool, desc string) error {
-	n.Discover.Advertise(n.nodeContext, desc)
-
-	pis, err := n.Discover.FindPeers(n.nodeContext, desc)
-	if err != nil {
-		return fmt.Errorf("rejoin: find peers %s: %w", desc, err)
+func (n *Node) AnnounceAll() error {
+	// Avoid holding the lock for too long.
+	n.pubsubLock.Lock()
+	topicList := make([]string, 0, len(n.topics))
+	for topic := range n.topics {
+		topicList = append(topicList, topic)
 	}
+	n.pubsubLock.Unlock()
 
-	go func() {
-		// The whole thing should not take more than a minute.
-		ctx, cancel := context.WithTimeout(n.nodeContext, time.Minute)
-		defer cancel()
-
-		for peer := range pis {
-			if string(peer.ID) == string(n.Host.ID()) {
-				continue
-			}
-			if err := n.Host.Connect(ctx, peer); err == nil {
-				if traceLog {
-					n.Cfg.Log.Printf("Connected to %v for %s", peer.ID, desc)
-				}
-			} else if traceLog {
-				n.Cfg.Log.Printf("Connect to %v for %s failed: %v", peer.ID, desc, err)
-			}
-		}
-
-		// Give pubsub some time to figure out connections.
-		time.Sleep(time.Second)
-
-		n.pubsubLock.Lock()
-		nowCount := len(n.PubsubProto.ListPeers(desc))
-		if lc, ok := n.knownChannelMembers[desc]; traceLog || !ok || nowCount != lc {
-			n.Cfg.Log.Printf("Connected to %d peers for %s", nowCount, desc)
-			n.knownChannelMembers[desc] = nowCount
-		}
-		n.pubsubLock.Unlock()
-	}()
+	for _, topic := range topicList {
+		n.AnnounceChannel(topic)
+	}
 
 	return nil
 }
@@ -193,12 +215,25 @@ func (n *Node) rejoin(ctx context.Context, traceLog bool, desc string) error {
 func (n *Node) rejoinGoroutine() {
 	t := time.NewTicker(n.Cfg.RejoinInterval)
 	for range t.C {
-		if err := n.rejoinAll(false); err != nil {
+		if err := n.RejoinAll(); err != nil {
 			if errors.Is(err, context.Canceled) {
 				t.Stop()
 				return
 			}
-			n.Cfg.Log.Printf("reannounce failed: %v", err)
+			n.Cfg.Log.Printf("rejoin failed: %v", err)
+		}
+	}
+}
+
+func (n *Node) announceGoroutine() {
+	t := time.NewTicker(n.Cfg.AnnounceInterval)
+	for range t.C {
+		if err := n.AnnounceAll(); err != nil {
+			if errors.Is(err, context.Canceled) {
+				t.Stop()
+				return
+			}
+			n.Cfg.Log.Printf("announce failed: %v", err)
 		}
 	}
 }

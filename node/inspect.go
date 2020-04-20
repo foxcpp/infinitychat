@@ -49,9 +49,9 @@ func (n *Node) Status() StatusData {
 
 	if s.ConnectedPeers == 0 {
 		s.State = "Alone."
-	} else if s.ConnectedPeers <= len(n.Cfg.Bootstrap) && noBootstrap {
+	} else if s.ConnectedPeers <= len(n.Cfg.Bootstrap) && !noBootstrap {
 		s.State = "Bootstrapping..."
-	} else if s.ConnectedPeers < lowConnsMark {
+	} else if s.ConnectedPeers < n.Cfg.ConnsLow {
 		s.State = "Active."
 	} else {
 		s.State = "Ready."

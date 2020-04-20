@@ -107,6 +107,7 @@ func main() {
 		PSK:              cfg.Swarm.PSK,
 		MDNSInterval:     time.Duration(cfg.Discovery.MDNSIntervalSecs) * time.Second,
 		RejoinInterval:   time.Duration(cfg.Channels.RejoinIntervalSecs) * time.Second,
+		AnnounceInterval: time.Duration(cfg.Channels.AnnounceIntervalSecs) * time.Second,
 		Log:              log.New(ui, "", 0),
 	})
 	if err != nil {

@@ -28,8 +28,7 @@ import (
 	"github.com/multiformats/go-multiaddr"
 )
 
-const lowConnsMark = 50
-const highConnsMark = 100
+const AdvertiseTTL = 10 * time.Minute
 
 type Config struct {
 	Identity ed25519.PrivateKey
@@ -44,7 +43,8 @@ type Config struct {
 	ConnsHigh int
 	ConnsLow  int
 
-	RejoinInterval time.Duration
+	RejoinInterval   time.Duration
+	AnnounceInterval time.Duration
 
 	Log *log.Logger
 }
@@ -94,6 +94,17 @@ func NewNode(cfg Config) (*Node, error) {
 
 	// Cannot fail since it is just copying struct internally.
 	privKey, _ := crypto.UnmarshalEd25519PrivateKey(cfg.Identity)
+
+	if cfg.AnnounceInterval > AdvertiseTTL {
+		n.Cfg.Log.Printf("Refusing to use announce interval longer than %v, forcing to %v",
+			AdvertiseTTL, AdvertiseTTL/2)
+		cfg.AnnounceInterval = AdvertiseTTL / 2
+	}
+	if cfg.RejoinInterval > AdvertiseTTL {
+		n.Cfg.Log.Printf("Refusing to use rejoin interval longer than %v, forcing to 30s",
+			AdvertiseTTL)
+		cfg.RejoinInterval = 30 * time.Second
+	}
 
 	opts := []libp2p.Option{
 		libp2p.Identity(privKey),

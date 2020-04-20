@@ -40,8 +40,15 @@ Establish libp2p connection to the other node.`,
 			Callback: connectCmd,
 		},
 		"rejoin": {
-			Description: "Force reannounce of channel membership",
-			FullHelp: `/rejoin
+			Description: "Force DHT lookup of channel members",
+			FullHelp: `/rejoin [channel descriptor]
+
+Might help to accelerate mesh reconnection in case of nodes falling offline.`,
+			Callback: rejoinCmd,
+		},
+		"announce": {
+			Description: "Force announce of channel membership",
+			FullHelp: `/rejoin [channel descriptor]
 
 Might help to accelerate mesh reconnection in case of nodes falling offline.`,
 			Callback: rejoinCmd,
@@ -235,9 +242,32 @@ func rejoinCmd(ui UI, node *infchat.Node, commandParts []string) {
 				ui.Error("local", true, "%v", err)
 				return
 			}
-			err = node.Rejoin(descriptor)
+			err = node.RejoinChannel(descriptor)
 		default:
 			ui.Msg("local", true, "Usage: /rejoin [descriptor]")
+			return
+		}
+		if err != nil {
+			ui.Error("local", true, "%v", err)
+		}
+	}()
+}
+
+func announceCmd(ui UI, node *infchat.Node, commandParts []string) {
+	go func() {
+		var err error
+		switch len(commandParts) {
+		case 1:
+			err = node.AnnounceAll()
+		case 2:
+			descriptor, err := infchat.ExpandDescriptor(commandParts[1])
+			if err != nil {
+				ui.Error("local", true, "%v", err)
+				return
+			}
+			err = node.AnnounceChannel(descriptor)
+		default:
+			ui.Msg("local", true, "Usage: /announce [descriptor]")
 			return
 		}
 		if err != nil {

@@ -26,7 +26,8 @@ type Config struct {
 	} `toml:"discovery"`
 
 	Channels struct {
-		RejoinIntervalSecs int `toml:"rejoin_interval_secs"`
+		RejoinIntervalSecs   int `toml:"rejoin_interval_secs"`
+		AnnounceIntervalSecs int `toml:"Announce_interval_secs"`
 	} `toml:"channels"`
 }
 
@@ -53,7 +54,8 @@ func CreateDefaults() *Config {
 	cfg.Swarm.LowWaterMark = 50
 	cfg.Discovery.MDNS = true
 	cfg.Discovery.MDNSIntervalSecs = 10
-	cfg.Channels.RejoinIntervalSecs = 15
+	cfg.Channels.RejoinIntervalSecs = 30
+	cfg.Channels.AnnounceIntervalSecs = 5 * 60 /* 5 mins */
 
 	return cfg
 }
