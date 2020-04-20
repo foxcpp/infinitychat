@@ -112,6 +112,7 @@ func main() {
 		ui.Error("local", false, "%v", err)
 		return
 	}
+	defer node.Close()
 
 	go serialui.InputLoop(ui, node)
 	go serialui.PullMessages(ui, node)
