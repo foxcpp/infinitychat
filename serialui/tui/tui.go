@@ -135,7 +135,7 @@ func (tui *TUI) statusUpdate(node *infchat.Node) {
 
 		statusLine := fmt.Sprintf(statusLineFmt, s.State, s.ConnectedPeers, s.KnownPeers, s.PubsubTopics)
 		if s.NAT {
-			statusLine += ", NAT detected"
+			statusLine += ", impenetrable NAT detected"
 		}
 
 		tui.app.QueueUpdateDraw(func() {
