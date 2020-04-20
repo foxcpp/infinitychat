@@ -34,9 +34,10 @@ const highConnsMark = 100
 type Config struct {
 	Identity ed25519.PrivateKey
 
-	Bootstrap   []string
-	ListenAddrs []string
-	PSK         string
+	Bootstrap    []string
+	ListenAddrs  []string
+	StaticRelays []string
+	PSK          string
 
 	MDNSInterval time.Duration
 
@@ -96,21 +97,18 @@ func NewNode(cfg Config) (*Node, error) {
 
 	opts := []libp2p.Option{
 		libp2p.Identity(privKey),
-		libp2p.ListenAddrStrings(cfg.ListenAddrs...),
 		libp2p.Security(noise.ID, noise.New),
 		libp2p.DefaultSecurity,
 		libp2p.DefaultTransports,
 		libp2p.ConnectionManager(connmgr.NewConnManager(
-			lowConnsMark,
-			highConnsMark,
-			time.Minute, // grace
+			cfg.ConnsLow,
+			cfg.ConnsHigh,
+			20*time.Second, // grace
 		)),
-		libp2p.NATPortMap(),
 		libp2p.Routing(func(h host.Host) (routing.PeerRouting, error) {
 			n.kdht, err = dht.New(ctx, h, dht.Mode(dht.ModeAuto))
 			return n.kdht, err
 		}),
-		libp2p.EnableAutoRelay(),
 		libp2p.Ping(false), // We will configure it on our own.
 		libp2p.UserAgent("infinitychat/v0.1"),
 	}
@@ -121,6 +119,35 @@ func NewNode(cfg Config) (*Node, error) {
 	} else {
 		// No support for private networks in QUIC transport (?)
 		opts = append(opts, libp2p.Transport(libp2pquic.NewTransport))
+	}
+
+	if len(cfg.ListenAddrs) != 0 {
+		opts = append(opts,
+			libp2p.ListenAddrStrings(cfg.ListenAddrs...),
+			libp2p.NATPortMap(),
+		)
+	} else {
+		opts = append(opts, libp2p.NoListenAddrs)
+	}
+
+	if len(cfg.StaticRelays) != 0 {
+		var staticRelays []peer.AddrInfo
+		for _, relay := range cfg.StaticRelays {
+			ma, err := multiaddr.NewMultiaddr(relay)
+			if err != nil {
+				return nil, h.Fail(err)
+			}
+
+			pi, err := peer.AddrInfoFromP2pAddr(ma)
+			if err != nil {
+				return nil, h.Fail(err)
+			}
+
+			staticRelays = append(staticRelays, *pi)
+		}
+		opts = append(opts, libp2p.StaticRelays(staticRelays))
+	} else {
+		opts = append(opts, libp2p.EnableAutoRelay())
 	}
 
 	n.Host, err = libp2p.New(

@@ -7,13 +7,14 @@ import (
 )
 
 type Config struct {
-	PrivateKeyPath string
+	PrivateKeyPath string `toml:"private_key_path"`
 
 	Swarm struct {
 		Bootstrap []string `toml:"bootstrap"`
 		PSK       string   `toml:"psk"`
 
-		ListenAddrs []string `toml:"listen_addrs"`
+		ListenAddrs  []string `toml:"listen_addrs"`
+		StaticRelays []string `toml:"static_relays"`
 
 		HighWaterMark int `toml:"conns_high_watermark"`
 		LowWaterMark  int `toml:"conns_low_watermark"`
@@ -38,8 +39,6 @@ func CreateDefaults() *Config {
 		"/dnsaddr/bootstrap.libp2p.io/ipfs/QmbLHAnMoJPWSCR5Zhtx6BHJX9KiKNN6tpvbUcqanj75Nb",
 		"/dnsaddr/bootstrap.libp2p.io/ipfs/QmcZf59bWwK5XFi76CZX8cbJ4BhTzzA3gU1ZjYZcYW3dwt",
 		"/ip4/104.131.131.82/tcp/4001/ipfs/QmaCpDMGvV2BGHeYERUEnRQAwe3N8SzbUtfsmvsqQLuvuJ",
-		"/ip4/128.199.219.111/tcp/4001/ipfs/QmSoLSafTMBsPKadTEgaXctDQVcqN88CNLHXMkTNwMKPnu",
-		"/ip6/2400:6180:0:d0::151:6001/tcp/4001/ipfs/QmSoLSafTMBsPKadTEgaXctDQVcqN88CNLHXMkTNwMKPnu",
 
 		"/ip4/51.15.110.221/tcp/4001/ipfs/QmZBXSZw6qwBhqiiv6xSJJQyrC6neyz3BTjGdyTa9sovKt",
 		"/ip6/2001:bc8:1840:724::1/tcp/4001/ipfs/QmZBXSZw6qwBhqiiv6xSJJQyrC6neyz3BTjGdyTa9sovKt",
@@ -49,10 +48,9 @@ func CreateDefaults() *Config {
 		"/ip6/::/tcp/18755",
 		"/ip4/0.0.0.0/udp/18755/quic",
 		"/ip6/::/udp/18755/quic",
-		"/p2p-circuit",
 	}
-	cfg.Swarm.HighWaterMark = 200
-	cfg.Swarm.LowWaterMark = 100
+	cfg.Swarm.HighWaterMark = 500
+	cfg.Swarm.LowWaterMark = 50
 	cfg.Discovery.MDNS = true
 	cfg.Discovery.MDNSIntervalSecs = 10
 	cfg.Channels.RejoinIntervalSecs = 15

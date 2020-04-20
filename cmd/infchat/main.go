@@ -98,15 +98,16 @@ func main() {
 	}
 
 	node, err := infchat.NewNode(infchat.Config{
-		Identity:       key,
-		Bootstrap:      cfg.Swarm.Bootstrap,
-		ListenAddrs:    cfg.Swarm.ListenAddrs,
-		ConnsHigh:      cfg.Swarm.HighWaterMark,
-		ConnsLow:       cfg.Swarm.LowWaterMark,
-		PSK:            cfg.Swarm.PSK,
-		MDNSInterval:   time.Duration(cfg.Discovery.MDNSIntervalSecs) * time.Second,
-		RejoinInterval: time.Duration(cfg.Channels.RejoinIntervalSecs) * time.Second,
-		Log:            log.New(ui, "", 0),
+		Identity:         key,
+		Bootstrap:        cfg.Swarm.Bootstrap,
+		ListenAddrs:      cfg.Swarm.ListenAddrs,
+		StaticRelays:     cfg.Swarm.StaticRelays,
+		ConnsHigh:        cfg.Swarm.HighWaterMark,
+		ConnsLow:         cfg.Swarm.LowWaterMark,
+		PSK:              cfg.Swarm.PSK,
+		MDNSInterval:     time.Duration(cfg.Discovery.MDNSIntervalSecs) * time.Second,
+		RejoinInterval:   time.Duration(cfg.Channels.RejoinIntervalSecs) * time.Second,
+		Log:              log.New(ui, "", 0),
 	})
 	if err != nil {
 		ui.Error("local", false, "%v", err)
