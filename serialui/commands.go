@@ -74,6 +74,10 @@ Channel must be joined prior using /join`,
 			Description: "Measure connection latency to the peer",
 			Callback:    pingCmd,
 		},
+		"listen": {
+			Description: "Show current listening addresses",
+			Callback:    listenCmd,
+		},
 		"quit": {
 			Description: "Shutdown the client",
 			Callback:    nil,
@@ -187,6 +191,13 @@ func connectCmd(ui UI, node *infchat.Node, commandParts []string) {
 	ui.Msg("local", true, "Connected to %s", pid)
 }
 
+func listenCmd(ui UI, node *infchat.Node, commandParts []string) {
+	ui.Msg("local", true, "Listening on:")
+	for _, ma := range node.Host.Addrs() {
+		ui.Msg("local", true, "%v", ma)
+	}
+}
+
 func msgCmd(ui UI, node *infchat.Node, commandParts []string) {
 	if len(commandParts) < 3 {
 		ui.Msg("local", true, "Usage: /msg <descriptor> <message>")
@@ -213,24 +224,26 @@ func msgCmd(ui UI, node *infchat.Node, commandParts []string) {
 }
 
 func rejoinCmd(ui UI, node *infchat.Node, commandParts []string) {
-	var err error
-	switch len(commandParts) {
-	case 1:
-		err = node.RejoinAll()
-	case 2:
-		descriptor, err := infchat.ExpandDescriptor(commandParts[1])
-		if err != nil {
-			ui.Error("local", true, "%v", err)
+	go func() {
+		var err error
+		switch len(commandParts) {
+		case 1:
+			err = node.RejoinAll()
+		case 2:
+			descriptor, err := infchat.ExpandDescriptor(commandParts[1])
+			if err != nil {
+				ui.Error("local", true, "%v", err)
+				return
+			}
+			err = node.Rejoin(descriptor)
+		default:
+			ui.Msg("local", true, "Usage: /rejoin [descriptor]")
 			return
 		}
-		err = node.Rejoin(descriptor)
-	default:
-		ui.Msg("local", true, "Usage: /rejoin [descriptor]")
-		return
-	}
-	if err != nil {
-		ui.Error("local", true, "%v", err)
-	}
+		if err != nil {
+			ui.Error("local", true, "%v", err)
+		}
+	}()
 }
 
 func peersCmd(ui UI, node *infchat.Node, commandParts []string) {
