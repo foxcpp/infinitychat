@@ -13,11 +13,11 @@ import (
 
 var ErrInterrupt = errors.New("interrupt requested")
 
-func HandleCommand(ui UI, node *infchat.Node, line string) error {
+func HandleCommand(ui UI, node *infchat.Node, buffer, line string) error {
 	type cmd struct {
 		Description string
 		FullHelp    string
-		Callback    func(UI, *infchat.Node, []string)
+		Callback    func(UI, *infchat.Node, string, []string)
 	}
 
 	cmds := map[string]cmd{
@@ -63,11 +63,11 @@ Channel must be joined prior using /join`,
 		},
 		"id": {
 			Description: "Show local node ID",
-			Callback: func(_ UI, _ *infchat.Node, p []string) {
+			Callback: func(_ UI, _ *infchat.Node, buf string, p []string) {
 				if len(p) != 1 {
-					ui.Msg("", "local", "Usage: /id")
+					ui.Msg(buf, "local", "Usage: /id")
 				}
-				ui.Msg("", "local", "My ID: %v", node.ID())
+				ui.Msg(buf, "local", "My ID: %v", node.ID())
 			},
 		},
 		"peers": {
@@ -96,10 +96,10 @@ Channel must be joined prior using /join`,
 	cmds["help"] = cmd{
 		Description: "Show available commands or extended command help (/help [command])",
 		FullHelp:    `/help [command]`,
-		Callback: func(_ UI, _ *infchat.Node, parts []string) {
+		Callback: func(_ UI, _ *infchat.Node, buf string, parts []string) {
 			switch len(parts) {
 			case 1:
-				ui.Msg("", "local", "Available commands:")
+				ui.Msg(buf, "local", "Available commands:")
 				cmdList := make([]string, 0, len(cmds))
 				maxLen := 0
 				for cmd := range cmds {
@@ -114,17 +114,17 @@ Channel must be joined prior using /join`,
 				for _, cmd := range cmdList {
 					fmt.Fprintf(&msgBuffer, "/%s%s%s\n", cmd, strings.Repeat(" ", maxLen-len(cmd)+4), cmds[cmd].Description)
 				}
-				ui.Msg("", "local", msgBuffer.String())
+				ui.Msg(buf, "local", msgBuffer.String())
 			case 2:
 				key := strings.ToLower(strings.TrimPrefix(parts[1], "/"))
 				info, ok := cmds[key]
 				if !ok {
-					ui.Error("", "local", "Unknown command")
+					ui.Error(buf, "local", "Unknown command")
 					return
 				}
-				ui.Msg("", "local", "%s\n%s", info.Description, info.FullHelp)
+				ui.Msg(buf, "local", "%s\n%s", info.Description, info.FullHelp)
 			default:
-				ui.Msg("", "local", "Usage: /help [command]")
+				ui.Msg(buf, "local", "Usage: /help [command]")
 			}
 		},
 	}
@@ -136,47 +136,47 @@ Channel must be joined prior using /join`,
 	}
 	cb, ok := cmds[key]
 	if !ok {
-		ui.Msg("", "local", "Unknown command /%s, try /help", key)
+		ui.Msg(buffer, "local", "Unknown command /%s, try /help", key)
 		return nil
 	}
-	cb.Callback(ui, node, parts)
+	cb.Callback(ui, node, buffer, parts)
 
 	return nil
 }
 
-func joinCmd(ui UI, node *infchat.Node, commandParts []string) {
+func joinCmd(ui UI, node *infchat.Node, buf string, commandParts []string) {
 	if len(commandParts) != 2 {
-		ui.Msg("", "local", "Usage: /join <channel descriptor>")
+		ui.Msg(buf, "local", "Usage: /join <channel descriptor>")
 		return
 	}
 	descriptor, err := infchat.ExpandDescriptor(commandParts[1])
 	if err != nil {
-		ui.Error("", "local", "Invalid channel descriptor")
+		ui.Error(buf, "local", "Invalid channel descriptor")
 		return
 	}
 
 	if err := node.JoinChannel(descriptor); err != nil {
-		ui.Error("", "local", "Join failed: %v", err)
+		ui.Error(buf, "local", "Join failed: %v", err)
 		return
 	}
 
-	ui.Msg("", "local", "Joined %s", commandParts[1])
+	ui.Msg(buf, "local", "Joined %s", commandParts[1])
 	ui.SetCurrentBuffer(infchat.DescriptorForDisplay(descriptor))
 }
 
-func leaveCmd(ui UI, node *infchat.Node, commandParts []string) {
+func leaveCmd(ui UI, node *infchat.Node, buf string, commandParts []string) {
 	if len(commandParts) != 2 {
-		ui.Msg("", "local", "Usage: /leave <channel descriptor>")
+		ui.Msg(buf, "local", "Usage: /leave <channel descriptor>")
 		return
 	}
 	descriptor, err := infchat.ExpandDescriptor(commandParts[1])
 	if err != nil {
-		ui.Error("", "local", "Invalid channel descriptor")
+		ui.Error(buf, "local", "Invalid channel descriptor")
 		return
 	}
 
 	if err := node.LeaveChannel(descriptor); err != nil {
-		ui.Error("", "local", "Leave failed: %v", err)
+		ui.Error(buf, "local", "Leave failed: %v", err)
 		return
 	}
 
@@ -184,24 +184,24 @@ func leaveCmd(ui UI, node *infchat.Node, commandParts []string) {
 		ui.SetCurrentBuffer("")
 	}
 
-	ui.Msg("", "local", "Left %s", commandParts[1])
+	ui.Msg(buf, "local", "Left %s", commandParts[1])
 }
 
-func connectCmd(ui UI, node *infchat.Node, commandParts []string) {
+func connectCmd(ui UI, node *infchat.Node, buf string, commandParts []string) {
 	if len(commandParts) != 2 {
-		ui.Msg("", "local", "Usage: /connect <peer descriptor>")
+		ui.Msg(buf, "local", "Usage: /connect <peer descriptor>")
 		return
 	}
 
 	pid, err := node.ConnectStr(commandParts[1])
 	if err != nil {
-		ui.Error("", "local", "Connect failed: %v", err)
+		ui.Error(buf, "local", "Connect failed: %v", err)
 		return
 	}
-	ui.Msg("", "local", "Connected to %s", pid)
+	ui.Msg(buf, "local", "Connected to %s", pid)
 }
 
-func listenCmd(ui UI, node *infchat.Node, commandParts []string) {
+func listenCmd(ui UI, node *infchat.Node, buf string, commandParts []string) {
 	var buffer strings.Builder
 
 	buffer.WriteString("Listening on:\n")
@@ -210,31 +210,31 @@ func listenCmd(ui UI, node *infchat.Node, commandParts []string) {
 		buffer.WriteRune('\n')
 	}
 
-	ui.Msg("", "local", buffer.String())
+	ui.Msg(buf, "local", buffer.String())
 }
 
-func msgCmd(ui UI, node *infchat.Node, commandParts []string) {
+func msgCmd(ui UI, node *infchat.Node, buf string, commandParts []string) {
 	if len(commandParts) < 3 {
-		ui.Msg("", "local", "Usage: /msg <descriptor> <message>")
+		ui.Msg(buf, "local", "Usage: /msg <descriptor> <message>")
 		return
 	}
 	descriptor := commandParts[1]
 	descriptor, err := infchat.ExpandDescriptor(commandParts[1])
 	if err != nil {
-		ui.Error("", "local", "Invalid channel descriptor")
+		ui.Error(buf, "local", "Invalid channel descriptor")
 		return
 	}
-	msg := strings.Join(commandParts[1:], " ")
+	msg := strings.Join(commandParts[2:], " ")
 
 	if err := node.Post(descriptor, msg); err != nil {
-		ui.Error("", "local", "Post failed: %v", err)
+		ui.Error(buf, "local", "Post failed: %v", err)
 		return
 	}
 
 	ui.Msg(infchat.DescriptorForDisplay(descriptor), node.ID().String(), msg)
 }
 
-func rejoinCmd(ui UI, node *infchat.Node, commandParts []string) {
+func rejoinCmd(ui UI, node *infchat.Node, buf string, commandParts []string) {
 	go func() {
 		var err error
 		switch len(commandParts) {
@@ -243,21 +243,21 @@ func rejoinCmd(ui UI, node *infchat.Node, commandParts []string) {
 		case 2:
 			descriptor, err := infchat.ExpandDescriptor(commandParts[1])
 			if err != nil {
-				ui.Error("", "local", "%v", err)
+				ui.Error(buf, "local", "%v", err)
 				return
 			}
 			err = node.RejoinChannel(descriptor)
 		default:
-			ui.Msg("", "local", "Usage: /rejoin [descriptor]")
+			ui.Msg(buf, "local", "Usage: /rejoin [descriptor]")
 			return
 		}
 		if err != nil {
-			ui.Error("", "%v", err)
+			ui.Error(buf, "%v", err)
 		}
 	}()
 }
 
-func announceCmd(ui UI, node *infchat.Node, commandParts []string) {
+func announceCmd(ui UI, node *infchat.Node, buf string, commandParts []string) {
 	go func() {
 		var err error
 		switch len(commandParts) {
@@ -266,21 +266,21 @@ func announceCmd(ui UI, node *infchat.Node, commandParts []string) {
 		case 2:
 			descriptor, err := infchat.ExpandDescriptor(commandParts[1])
 			if err != nil {
-				ui.Error("", "%v", err)
+				ui.Error(buf, "%v", err)
 				return
 			}
 			err = node.AnnounceChannel(descriptor)
 		default:
-			ui.Msg("", "local", "Usage: /announce [descriptor]")
+			ui.Msg(buf, "local", "Usage: /announce [descriptor]")
 			return
 		}
 		if err != nil {
-			ui.Error("", "%v", err)
+			ui.Error(buf, "%v", err)
 		}
 	}()
 }
 
-func peersCmd(ui UI, node *infchat.Node, commandParts []string) {
+func peersCmd(ui UI, node *infchat.Node, buf string, commandParts []string) {
 	var msg strings.Builder
 
 	fmt.Fprintf(&msg, "Connected peers:\n")
@@ -291,47 +291,47 @@ func peersCmd(ui UI, node *infchat.Node, commandParts []string) {
 		}
 	}
 
-	ui.Msg("", "local", "%s", msg.String())
+	ui.Msg(buf, "local", "%s", msg.String())
 }
 
-func statCmd(ui UI, node *infchat.Node, commandParts []string) {
+func statCmd(ui UI, node *infchat.Node, buf string, commandParts []string) {
 	if len(commandParts) < 2 {
-		ui.Msg("", "local", "Usage: /stat <descriptor>")
+		ui.Msg(buf, "local", "Usage: /stat <descriptor>")
 		return
 	}
 	descriptor, err := infchat.ExpandDescriptor(commandParts[1])
 	if err != nil {
-		ui.Error("", "local", "Invalid descriptor")
+		ui.Error(buf, "local", "Invalid descriptor")
 		return
 	}
 
 	switch {
 	case strings.HasPrefix(descriptor, "/ip6"), strings.HasPrefix(descriptor, "/ip4"):
-		statMultiaddr(ui, node, descriptor)
+		statMultiaddr(ui, node, buf, descriptor)
 	case strings.HasPrefix(descriptor, "/ipfs"), strings.HasPrefix(descriptor, "/p2p"):
-		statMultiaddr(ui, node, descriptor)
+		statMultiaddr(ui, node, buf, descriptor)
 	case strings.HasPrefix(descriptor, infchat.ChanPrefix):
-		statChannel(ui, node, descriptor)
+		statChannel(ui, node, buf, descriptor)
 	case strings.HasPrefix(descriptor, infchat.DMPrefix):
-		statDM(ui, node, descriptor)
+		statDM(ui, node, buf, descriptor)
 	default:
-		ui.Msg("", "local", "No idea what to do with %s", descriptor)
+		ui.Msg(buf, "local", "No idea what to do with %s", descriptor)
 	}
 }
 
-func statMultiaddr(ui UI, node *infchat.Node, desc string) {
+func statMultiaddr(ui UI, node *infchat.Node, buf, desc string) {
 	ma, err := multiaddr.NewMultiaddr(desc)
 	if err != nil {
-		ui.Error("", "local", "Failed to parse multiaddress: %v", err)
+		ui.Error(buf, "local", "Failed to parse multiaddress: %v", err)
 		return
 	}
 	pi, err := peer.AddrInfoFromP2pAddr(ma)
 	if err != nil {
-		ui.Error("", "local", "Failed to parse multiaddress: %v", err)
+		ui.Error(buf, "local", "Failed to parse multiaddress: %v", err)
 		return
 	}
 
-	statPeer(ui, node, pi.ID)
+	statPeer(ui, node, buf, pi.ID)
 }
 
 var boolStr = map[bool]string{
@@ -339,14 +339,14 @@ var boolStr = map[bool]string{
 	false: "no",
 }
 
-func statPeer(ui UI, node *infchat.Node, peerID peer.ID) {
+func statPeer(ui UI, node *infchat.Node, buf string, peerID peer.ID) {
 	var msg strings.Builder
 
 	fmt.Fprintf(&msg, "Peer /p2p/%v\n", peerID)
 	info := node.Host.Peerstore().PeerInfo(peerID)
 	if len(info.Addrs) == 0 {
 		fmt.Fprintf(&msg, " Unknown peer\n")
-		ui.Msg("", "local", msg.String())
+		ui.Msg(buf, "local", msg.String())
 		return
 	}
 	conns := node.Host.Network().ConnsToPeer(peerID)
@@ -380,10 +380,10 @@ func statPeer(ui UI, node *infchat.Node, peerID peer.ID) {
 		}
 	}
 
-	ui.Msg("", "local", "%s", msg.String())
+	ui.Msg(buf, "local", "%s", msg.String())
 }
 
-func statChannel(ui UI, node *infchat.Node, desc string) {
+func statChannel(ui UI, node *infchat.Node, buf string, desc string) {
 	var msg strings.Builder
 
 	fmt.Fprintf(&msg, "Channel %s\n", infchat.DescriptorForDisplay(desc))
@@ -397,27 +397,27 @@ func statChannel(ui UI, node *infchat.Node, desc string) {
 		}
 	}
 
-	ui.Msg("", "local", "%s", msg.String())
+	ui.Msg(buf, "local", "%s", msg.String())
 }
 
-func statDM(ui UI, node *infchat.Node, desc string) {
-	ui.Msg("", "local", "Not implemented yet")
+func statDM(ui UI, node *infchat.Node, buf, desc string) {
+	ui.Msg(buf, "local", "Not implemented yet")
 }
 
-func pingCmd(ui UI, node *infchat.Node, commandParts []string) {
+func pingCmd(ui UI, node *infchat.Node, buf string, commandParts []string) {
 	if len(commandParts) < 2 {
-		ui.Msg("", "local", "Usage: /ping <peer ID>")
+		ui.Msg(buf, "local", "Usage: /ping <peer ID>")
 		return
 	}
 
 	pid, err := peer.Decode(commandParts[1])
 	if err != nil {
-		ui.Error("", "Malformed ID: %v", err)
+		ui.Error(buf, "Malformed ID: %v", err)
 		return
 	}
 
 	for i := 0; i < 3; i++ {
 		res := node.Ping(pid)
-		ui.Msg("", "local", "RTT to %v: %v", pid, res)
+		ui.Msg(buf, "local", "RTT to %v: %v", pid, res)
 	}
 }

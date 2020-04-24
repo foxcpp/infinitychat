@@ -39,12 +39,12 @@ func InputLoop(ui UI, node *infchat.Node) {
 			continue
 		}
 
-		if err := HandleCommand(ui, node, t); err != nil {
+		if err := HandleCommand(ui, node, bufferName, t); err != nil {
 			if err == ErrInterrupt {
 				ui.Close()
 				return
 			}
-			ui.Error("", "%v", err)
+			ui.Error(bufferName, "%v", err)
 		}
 	}
 }

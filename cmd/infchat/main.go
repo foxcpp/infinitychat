@@ -14,6 +14,7 @@ import (
 
 	infchat "github.com/foxcpp/infinitychat/node"
 	"github.com/foxcpp/infinitychat/serialui"
+	"github.com/foxcpp/infinitychat/serialui/ircd"
 	"github.com/foxcpp/infinitychat/serialui/simple"
 	"github.com/foxcpp/infinitychat/serialui/tui"
 	golog "github.com/ipfs/go-log"
@@ -83,8 +84,10 @@ func main() {
 		ui = tui.New()
 	case "simple":
 		ui = simple.New()
+	case "ircd":
+		ui = ircd.New("127.0.0.1:6669", log.New(os.Stderr, "", 0))
 	default:
-		fmt.Fprintf(os.Stderr, "Unknown UI implementation, available: tview, simple\n")
+		fmt.Fprintf(os.Stderr, "Unknown UI implementation, available: tview, simple, ircd\n")
 		return
 	}
 
