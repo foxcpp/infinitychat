@@ -29,9 +29,11 @@ type TUI struct {
 
 	lines chan string
 
-	currentTopic string
+	currentBuffer string
 
 	running bool
+
+	node *infchat.Node
 }
 
 func New() *TUI {
@@ -118,6 +120,7 @@ func New() *TUI {
 
 func (tui *TUI) Run(node *infchat.Node) {
 	tui.running = true
+	tui.node = node
 	go tui.statusUpdate(node)
 	tui.app.Run()
 }
@@ -146,26 +149,26 @@ func (tui *TUI) statusUpdate(node *infchat.Node) {
 }
 
 func (tui *TUI) Write(b []byte) (int, error) {
-	tui.Msg("local", true, "%v", string(b))
+	tui.Msg("", "local", "%v", string(b))
 	return 0, nil
 }
 
-func (tui *TUI) Msg(prefix string, local bool, format string, args ...interface{}) {
-	tui.msg(prefix, local, true, format, args...)
+func (tui *TUI) Msg(buffer, sender string, format string, args ...interface{}) {
+	tui.msg(buffer, sender, true, format, args...)
 }
 
-func (tui *TUI) ColorMsg(prefix string, local bool, format string, args ...interface{}) {
-	tui.msg(prefix, local, false, format, args...)
+func (tui *TUI) ColorMsg(buffer, sender string, format string, args ...interface{}) {
+	tui.msg(buffer, sender, false, format, args...)
 }
 
-func (tui *TUI) Error(prefix string, local bool, format string, args ...interface{}) {
+func (tui *TUI) Error(buffer, format string, args ...interface{}) {
 	value := fmt.Sprintf(format, args...)
 
-	tui.msg(prefix, local, false, "[#fe3333:-:b]%s[-:-:-]", tview.Escape(value))
+	tui.msg(buffer, "local", false, "[#fe3333:-:b]%s[-:-:-]", tview.Escape(value))
 }
 
-func pickColor(prefix string) string {
-	if prefix == "local" {
+func pickColor(ourId, prefix string) string {
+	if prefix == "local" || ourId == prefix {
 		return `#bcbcbc`
 	}
 
@@ -189,7 +192,7 @@ func pickColor(prefix string) string {
 	return colors[crc32%uint32(len(colors))]
 }
 
-func (tui *TUI) msg(prefix string, local, escape bool, format string, args ...interface{}) {
+func (tui *TUI) msg(buffer, sender string, escape bool, format string, args ...interface{}) {
 	msg := fmt.Sprintf(format, args...)
 	msg = strings.TrimRight(msg, "\n\t ")
 
@@ -203,18 +206,20 @@ func (tui *TUI) msg(prefix string, local, escape bool, format string, args ...in
 	}
 
 	var prefixBraces string
-	if local {
-		prefixBraces = tview.Escape("[" + prefix + "]")
+	if sender == "local" {
+		prefixBraces = tview.Escape("[local]")
+	} else if buffer == "" || buffer == tui.CurrentBuffer() {
+		prefixBraces = "<" + sender + ">"
 	} else {
-		prefixBraces = "<" + prefix + ">"
+		prefixBraces = "<" + buffer + ":" + sender + ">"
 	}
-	color := pickColor(prefix)
+	color := pickColor(tui.node.ID().String(), sender)
 
 	var msgBuffer bytes.Buffer
 
 	for _, line := range lines {
 		if !tui.running {
-			fmt.Fprintf(os.Stderr, "%v [%s] %s\n", time.Now().Format("15:04:05"), prefix, line)
+			fmt.Fprintf(os.Stderr, "%v [%s] %s\n", time.Now().Format("15:04:05"), sender, line)
 		}
 		fmt.Fprintf(&msgBuffer, "%v [%s][::b]%s[#eeeeee::-] %s[-]\n", stamp, color, prefixBraces, line)
 		tui.logLineCount++
@@ -224,8 +229,6 @@ func (tui *TUI) msg(prefix string, local, escape bool, format string, args ...in
 		tui.logBox.ScrollToEnd()
 	}
 
-	tui.input.SetLabel(infchat.DescriptorForDisplay(tui.currentTopic) + " > ")
-
 	tui.logBox.Write(msgBuffer.Bytes())
 
 	if tui.running {
@@ -233,15 +236,15 @@ func (tui *TUI) msg(prefix string, local, escape bool, format string, args ...in
 	}
 }
 
-func (tui *TUI) ReadLine() (string, error) {
-	tui.input.SetLabel(infchat.DescriptorForDisplay(tui.currentTopic) + " > ")
-	return <-tui.lines, nil
+func (tui *TUI) ReadLine() (string, string, error) {
+	tui.input.SetLabel(infchat.DescriptorForDisplay(tui.currentBuffer) + " > ")
+	return tui.currentBuffer, <-tui.lines, nil
 }
 
-func (tui *TUI) SetCurrentChat(desc string) {
-	tui.currentTopic = desc
+func (tui *TUI) SetCurrentBuffer(desc string) {
+	tui.currentBuffer = desc
 }
 
-func (tui *TUI) CurrentChat() string {
-	return tui.currentTopic
+func (tui *TUI) CurrentBuffer() string {
+	return tui.currentBuffer
 }

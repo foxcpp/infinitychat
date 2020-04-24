@@ -7,15 +7,15 @@ package serialui
 // TODO: Proper documentation for serial UI model.
 
 type UI interface {
-	ColorMsg(prefix string, local bool, format string, args ...interface{})
-	Error(prefix string, local bool, format string, args ...interface{})
-	Msg(prefix string, local bool, format string, args ...interface{})
+	ColorMsg(buffer, sender string, format string, args ...interface{})
+	Error(buffer, format string, args ...interface{})
+	Msg(buffer, sender string, format string, args ...interface{})
 	Write(b []byte) (int, error)
 
-	ReadLine() (string, error)
+	ReadLine() (buffer string, line string, err error)
 
-	SetCurrentChat(descriptor string)
-	CurrentChat() string
+	SetCurrentBuffer(name string)
+	CurrentBuffer() string
 
 	Close() error
 }

@@ -8,12 +8,12 @@ import (
 
 func InputLoop(ui UI, node *infchat.Node) {
 	for {
-		l, err := ui.ReadLine()
+		bufferName, l, err := ui.ReadLine()
 		if err != nil {
 			if err == ErrInterrupt {
 				return
 			}
-			ui.Error("local", true, "I/O error: %v", err)
+			ui.Error(bufferName, "I/O error: %v", err)
 			return
 		}
 
@@ -22,16 +22,20 @@ func InputLoop(ui UI, node *infchat.Node) {
 			continue
 		}
 		if !strings.HasPrefix(t, "/") {
-			if ui.CurrentChat() == "" {
-				ui.Msg("local", true, "You shout in the empty field with noone to hear you... use /join <channel>")
+			if bufferName == "" {
+				ui.Msg(bufferName, "local", "You shout in the empty field with noone to hear you... use /join <channel>")
 				continue
 			}
-			if err := node.Post(ui.CurrentChat(), t); err != nil {
-				ui.Error("local", true, "Post failed: %v", err)
+			descr, err := infchat.ExpandDescriptor(bufferName)
+			if err != nil {
+				ui.Error(bufferName, "Post failed: invalid buffer: %v", err)
 				continue
 			}
-
-			ui.Msg(node.ID().String(), true, t)
+			if err := node.Post(descr, t); err != nil {
+				ui.Error(bufferName, "Post failed: %v", err)
+				continue
+			}
+			ui.Msg(bufferName, node.ID().String(), t)
 			continue
 		}
 
@@ -40,17 +44,13 @@ func InputLoop(ui UI, node *infchat.Node) {
 				ui.Close()
 				return
 			}
-			ui.Error("local", true, "%v", err)
+			ui.Error("", "%v", err)
 		}
 	}
 }
 
 func PullMessages(ui UI, node *infchat.Node) {
 	for msg := range node.Messages() {
-		if ui.CurrentChat() == msg.Channel {
-			ui.Msg(msg.Sender.String(), false, "%s", msg.Text)
-		} else {
-			ui.Msg(infchat.DescriptorForDisplay(msg.Channel)+":"+msg.Sender.String(), false, "%s", msg.Text)
-		}
+		ui.Msg(infchat.DescriptorForDisplay(msg.Channel), msg.Sender.String(), "%s", msg.Text)
 	}
 }

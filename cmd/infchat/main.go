@@ -38,7 +38,7 @@ func loadKey(ui serialui.UI, path string) (ed25519.PrivateKey, error) {
 		return nil, fmt.Errorf("loadKey: %w", err)
 	}
 
-	ui.Msg("local", true, "Generating a new ed25519 key pair...")
+	ui.Msg("", "local", "Generating a new ed25519 key pair...")
 
 	_, privKey, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
@@ -93,7 +93,7 @@ func main() {
 
 	key, err := loadKey(ui, cfg.PrivateKeyPath)
 	if err != nil {
-		ui.Error("local", true, "%v", err)
+		ui.Error("", "%v", err)
 		return
 	}
 
@@ -111,7 +111,7 @@ func main() {
 		Log:              log.New(ui, "", 0),
 	})
 	if err != nil {
-		ui.Error("local", false, "%v", err)
+		ui.Error("", "%v", err)
 		return
 	}
 	defer node.Close()
