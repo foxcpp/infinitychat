@@ -21,3 +21,5 @@ require (
 	golang.org/x/crypto v0.0.0-20200414173820-0848c9571904
 	golang.org/x/sys v0.0.0-20200413165638-669c56c373c4
 )
+
+replace github.com/rivo/tview => github.com/foxcpp/tview v0.0.0-20200424092230-79804e290a02
