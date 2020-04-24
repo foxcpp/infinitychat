@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"bytes"
 	"fmt"
 	"hash/crc32"
 	"io"
@@ -209,11 +210,13 @@ func (tui *TUI) msg(prefix string, local, escape bool, format string, args ...in
 	}
 	color := pickColor(prefix)
 
+	var msgBuffer bytes.Buffer
+
 	for _, line := range lines {
 		if !tui.running {
-			fmt.Fprintf(os.Stderr, "%v [%s] %s", time.Now().Format("15:04:05"), prefix, line)
+			fmt.Fprintf(os.Stderr, "%v [%s] %s\n", time.Now().Format("15:04:05"), prefix, line)
 		}
-		fmt.Fprintf(tui.logBox, "%v [%s][::b]%s[#eeeeee::-] %s[-]\n", stamp, color, prefixBraces, line)
+		fmt.Fprintf(&msgBuffer, "%v [%s][::b]%s[#eeeeee::-] %s[-]\n", stamp, color, prefixBraces, line)
 		tui.logLineCount++
 	}
 
@@ -222,6 +225,9 @@ func (tui *TUI) msg(prefix string, local, escape bool, format string, args ...in
 	}
 
 	tui.input.SetLabel(infchat.DescriptorForDisplay(tui.currentTopic) + " > ")
+
+	tui.logBox.Write(msgBuffer.Bytes())
+
 	if tui.running {
 		tui.app.Draw()
 	}

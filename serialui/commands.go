@@ -2,6 +2,7 @@ package serialui
 
 import (
 	"errors"
+	"fmt"
 	"sort"
 	"strings"
 
@@ -107,11 +108,13 @@ Channel must be joined prior using /join`,
 					}
 					cmdList = append(cmdList, cmd)
 				}
+				var msgBuffer strings.Builder
 				// Put into slice and sort to give it determistic ordering.
 				sort.Strings(cmdList)
 				for _, cmd := range cmdList {
-					ui.Msg("local", true, "/%s%s%s", cmd, strings.Repeat(" ", maxLen-len(cmd)+4), cmds[cmd].Description)
+					fmt.Fprintf(&msgBuffer, "/%s%s%s\n", cmd, strings.Repeat(" ", maxLen-len(cmd)+4), cmds[cmd].Description)
 				}
+				ui.Msg("local", true, msgBuffer.String())
 			case 2:
 				key := strings.ToLower(strings.TrimPrefix(parts[1], "/"))
 				info, ok := cmds[key]
@@ -199,10 +202,15 @@ func connectCmd(ui UI, node *infchat.Node, commandParts []string) {
 }
 
 func listenCmd(ui UI, node *infchat.Node, commandParts []string) {
-	ui.Msg("local", true, "Listening on:")
+	var buffer strings.Builder
+
+	buffer.WriteString("Listening on:\n")
 	for _, ma := range node.Host.Addrs() {
-		ui.Msg("local", true, "%v", ma)
+		buffer.WriteString(ma.String())
+		buffer.WriteRune('\n')
 	}
+
+	ui.Msg("local", true, buffer.String())
 }
 
 func msgCmd(ui UI, node *infchat.Node, commandParts []string) {
@@ -277,13 +285,17 @@ func announceCmd(ui UI, node *infchat.Node, commandParts []string) {
 }
 
 func peersCmd(ui UI, node *infchat.Node, commandParts []string) {
-	ui.Msg("local", true, "Connected peers:")
+	var msg strings.Builder
+
+	fmt.Fprintf(&msg, "Connected peers:\n")
 	for _, p := range node.Host.Network().Peers() {
 		conns := node.Host.Network().ConnsToPeer(p)
 		for _, c := range conns {
-			ui.Msg("local", true, "%v/p2p/%v", c.RemoteMultiaddr(), p)
+			fmt.Fprintf(&msg, "%v/p2p/%v\n", c.RemoteMultiaddr(), p)
 		}
 	}
+
+	ui.Msg("local", true, "%s", msg.String())
 }
 
 func statCmd(ui UI, node *infchat.Node, commandParts []string) {
@@ -293,7 +305,7 @@ func statCmd(ui UI, node *infchat.Node, commandParts []string) {
 	}
 	descriptor, err := infchat.ExpandDescriptor(commandParts[1])
 	if err != nil {
-		ui.Msg("local", true, "Invalid descriptor")
+		ui.Error("local", true, "Invalid descriptor")
 		return
 	}
 
@@ -314,12 +326,12 @@ func statCmd(ui UI, node *infchat.Node, commandParts []string) {
 func statMultiaddr(ui UI, node *infchat.Node, desc string) {
 	ma, err := multiaddr.NewMultiaddr(desc)
 	if err != nil {
-		ui.Msg("local", true, "Failed to parse multiaddress: %v", err)
+		ui.Error("local", true, "Failed to parse multiaddress: %v", err)
 		return
 	}
 	pi, err := peer.AddrInfoFromP2pAddr(ma)
 	if err != nil {
-		ui.Msg("local", true, "Failed to parse multiaddress: %v", err)
+		ui.Error("local", true, "Failed to parse multiaddress: %v", err)
 		return
 	}
 
@@ -332,56 +344,64 @@ var boolStr = map[bool]string{
 }
 
 func statPeer(ui UI, node *infchat.Node, peerID peer.ID) {
-	ui.Msg("local", true, "Peer /p2p/%v", peerID)
+	var msg strings.Builder
+
+	fmt.Fprintf(&msg, "Peer /p2p/%v\n", peerID)
 	info := node.Host.Peerstore().PeerInfo(peerID)
 	if len(info.Addrs) == 0 {
-		ui.Msg("local", true, " Unknown peer")
+		fmt.Fprintf(&msg, " Unknown peer\n")
+		ui.Msg("local", true, msg.String())
 		return
 	}
 	conns := node.Host.Network().ConnsToPeer(peerID)
 	if len(conns) == 0 {
-		ui.Msg("local", true, " Not connected")
+		fmt.Fprintf(&msg, " Not connected\n")
 	}
 
 	latEWMA := node.Host.Peerstore().LatencyEWMA(peerID)
 	if latEWMA != 0 {
-		ui.Msg("local", true, " Latency EWMA: %v", latEWMA)
+		fmt.Fprintf(&msg, " Latency EWMA: %v\n", latEWMA)
 	}
 
-	ui.Msg("local", true, "Advertised addresses:")
+	fmt.Fprintf(&msg, "Advertised addresses:\n")
 	for _, a := range info.Addrs {
-		ui.Msg("local", true, "| %v", a)
+		fmt.Fprintf(&msg, "| %v\n", a)
 	}
 	protos, err := node.Host.Peerstore().GetProtocols(peerID)
 	if err != nil {
-		ui.Msg("local", true, " GetProtocols failed: %v", err)
+		fmt.Fprintf(&msg, " GetProtocols failed: %v\n", err)
 	} else {
-		ui.Msg("local", true, "Protocols:")
+		fmt.Fprintf(&msg, "Protocols:\n")
 		for _, prot := range protos {
-			ui.Msg("local", true, "| %s", prot)
+			fmt.Fprintf(&msg, "| %s\n", prot)
 		}
 	}
 
 	if len(conns) != 0 {
-		ui.Msg("local", true, "Connected via:")
+		fmt.Fprintf(&msg, "Connected via:\n")
 		for _, c := range conns {
-			ui.Msg("local", true, "| %v", c.RemoteMultiaddr())
+			fmt.Fprintf(&msg, "| %v\n", c.RemoteMultiaddr())
 		}
 	}
+
+	ui.Msg("local", true, "%s", msg.String())
 }
 
 func statChannel(ui UI, node *infchat.Node, desc string) {
-	ui.Msg("local", true, "Channel %s", infchat.DescriptorForDisplay(desc))
-	ui.Msg("local", true, " Full descriptor: %s", desc)
-	ui.Msg("local", true, " We are member: %s", boolStr[node.IsJoined(desc)])
+	var msg strings.Builder
+
+	fmt.Fprintf(&msg, "Channel %s\n", infchat.DescriptorForDisplay(desc))
+	fmt.Fprintf(&msg, " Full descriptor: %s\n", desc)
+	fmt.Fprintf(&msg, " We are member: %s\n", boolStr[node.IsJoined(desc)])
 	peers := node.ConnectedMembers(desc)
 	if len(peers) != 0 {
-		ui.Msg("local", true, "Connected members:")
+		fmt.Fprintf(&msg, "Connected members:\n")
 		for _, p := range peers {
-			node.Host.Network().Connectedness(p)
-			ui.Msg("local", true, "| /p2p/%v", p)
+			fmt.Fprintf(&msg, "| /p2p/%v", p)
 		}
 	}
+
+	ui.Msg("local", true, "%s", msg.String())
 }
 
 func statDM(ui UI, node *infchat.Node, desc string) {
