@@ -14,6 +14,7 @@ import (
 
 	infchat "github.com/foxcpp/infinitychat/node"
 	"github.com/foxcpp/infinitychat/serialui"
+	"github.com/foxcpp/infinitychat/serialui/simple"
 	"github.com/foxcpp/infinitychat/serialui/tui"
 	golog "github.com/ipfs/go-log"
 	"golang.org/x/crypto/ssh/terminal"
@@ -80,6 +81,11 @@ func main() {
 	switch *serialUI {
 	case "tview":
 		ui = tui.New()
+	case "simple":
+		ui = simple.New()
+	default:
+		fmt.Fprintf(os.Stderr, "Unknown UI implementation, available: tview, simple\n")
+		return
 	}
 
 	if canLog() {
