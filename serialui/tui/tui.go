@@ -184,7 +184,8 @@ func pickColor(prefix string) string {
 		`#93e0e3`,
 	}
 
-	return colors[int(crc32.ChecksumIEEE([]byte(prefix)))%len(colors)]
+	crc32 := crc32.ChecksumIEEE([]byte(prefix))
+	return colors[crc32%uint32(len(colors))]
 }
 
 func (tui *TUI) msg(prefix string, local, escape bool, format string, args ...interface{}) {
